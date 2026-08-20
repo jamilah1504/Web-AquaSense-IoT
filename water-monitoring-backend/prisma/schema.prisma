@@ -1,0 +1,177 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+enum Role {
+  ADMIN
+  OPERATOR
+}
+
+enum DeviceStatus {
+  ONLINE
+  OFFLINE
+}
+
+enum SensorType {
+  PH
+  TURBIDITY
+  TDS
+  TEMPERATURE
+}
+
+enum Severity {
+  WARNING
+  CRITICAL
+}
+
+enum WarningStatus {
+  ACTIVE
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+enum NotifStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum NotifChannel {
+  WHATSAPP
+}
+
+// ==========================================
+// MODELS
+// ==========================================
+
+model User {
+  id         String   @id @default(uuid())
+  email      String   @unique
+  password   String
+  name       String
+  role       Role     @default(OPERATOR)
+  phone      String?  // <-- Tambahkan baris ini
+  department String?  // <-- Tambahkan baris ini
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Device {
+  id              String       @id @default(uuid())
+  deviceId        String       @unique // cth: WATER-001
+  name            String
+  status          DeviceStatus @default(OFFLINE)
+  lastSeen        DateTime?
+  firmwareVersion String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  // Relations
+  sensors         Sensor[]
+  readings        SensorReading[]
+  warnings        Warning[]
+  logs            DeviceLog[]
+}
+
+model Sensor {
+  id        String       @id @default(uuid())
+  type      SensorType
+  name      String
+  unit      String
+  status    DeviceStatus @default(OFFLINE)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  // Relations
+  deviceId  String
+  device    Device       @relation(fields: [deviceId], references: [deviceId], onDelete: Cascade)
+
+  @@unique([deviceId, type]) // 1 Device hanya boleh punya 1 tipe sensor yang sama
+}
+
+model SensorReading {
+  id          String   @id @default(uuid())
+  timestamp   DateTime @default(now())
+  ph          Float
+  turbidity   Float
+  tds         Float
+  temperature Float
+  createdAt   DateTime @default(now())
+
+  // Relations
+  deviceId    String
+  device      Device   @relation(fields: [deviceId], references: [deviceId], onDelete: Cascade)
+  warnings    Warning[]
+
+  // Indexes untuk optimasi query history API
+  @@index([deviceId])
+  @@index([timestamp])
+}
+
+model Threshold {
+  id          String     @id @default(uuid())
+  parameter   SensorType @unique
+  warningMin  Float?
+  warningMax  Float?
+  criticalMin Float?
+  criticalMax Float?
+  updatedAt   DateTime   @updatedAt
+}
+
+model Warning {
+  id         String        @id @default(uuid())
+  parameter  SensorType
+  value      Float
+  threshold  Float
+  severity   Severity
+  message    String        @db.Text
+  status     WarningStatus @default(ACTIVE)
+  createdAt  DateTime      @default(now())
+  resolvedAt DateTime?
+
+  // Relations
+  deviceId   String
+  device     Device        @relation(fields: [deviceId], references: [deviceId], onDelete: Cascade)
+  
+  readingId  String
+  reading    SensorReading @relation(fields: [readingId], references: [id], onDelete: Cascade)
+
+  notificationLogs NotificationLog[]
+
+  @@index([deviceId])
+  @@index([status])
+  @@index([severity])
+}
+
+model NotificationLog {
+  id           String       @id @default(uuid())
+  channel      NotifChannel @default(WHATSAPP)
+  recipient    String
+  message      String       @db.Text
+  status       NotifStatus  @default(PENDING)
+  sentAt       DateTime?
+  errorMessage String?      @db.Text
+  createdAt    DateTime     @default(now())
+
+  // Relations
+  warningId    String
+  warning      Warning      @relation(fields: [warningId], references: [id], onDelete: Cascade)
+}
+
+model DeviceLog {
+  id        String   @id @default(uuid())
+  message   String   @db.Text
+  createdAt DateTime @default(now())
+
+  // Relations
+  deviceId  String
+  device    Device   @relation(fields: [deviceId], references: [deviceId], onDelete: Cascade)
+}

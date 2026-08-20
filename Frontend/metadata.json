@@ -1,0 +1,6 @@
+{
+  "name": "AquaSense IoT - Sistem Monitoring Kualitas Air",
+  "description": "Platform pemantauan kualitas air IoT profesional dan modern dengan telemetri realtime (pH, Turbidity, TDS, Suhu), analisis sensor, manajemen perangkat, alert WhatsApp, dan simulasi IoT.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
