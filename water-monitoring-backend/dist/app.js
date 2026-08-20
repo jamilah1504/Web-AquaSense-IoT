@@ -15,6 +15,8 @@ const iot_routes_1 = __importDefault(require("./routes/iot.routes"));
 const reading_routes_1 = __importDefault(require("./routes/reading.routes")); // <-- Import route
 const dashboard_routes_1 = __importDefault(require("./routes/dashboard.routes")); // <-- Import route
 const threshold_routes_1 = __importDefault(require("./routes/threshold.routes"));
+const warning_routes_1 = __importDefault(require("./routes/warning.routes"));
+const notification_routes_1 = __importDefault(require("./routes/notification.routes"));
 const app = (0, express_1.default)();
 // 1. MIDDLEWARE WAJIB (Harus paling atas!)
 app.use((0, helmet_1.default)());
@@ -36,6 +38,8 @@ app.use('/api/iot', iot_routes_1.default);
 app.use('/api/readings', reading_routes_1.default); // <-- Tambahkan route ini
 app.use('/api/dashboard', dashboard_routes_1.default); // <-- Tambahkan route ini
 app.use('/api/thresholds', threshold_routes_1.default); // <-- Tambahkan route ini
+app.use('/api/warnings', warning_routes_1.default); // <-- Tambahkan route ini
+app.use('/api/notifications', notification_routes_1.default);
 // 3. FALLBACK ROUTE
 app.use((req, res) => {
     res.status(404).json({ success: false, message: 'Endpoint not found' });

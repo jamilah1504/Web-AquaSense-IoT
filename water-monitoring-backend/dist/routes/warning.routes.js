@@ -1,1 +1,10 @@
 "use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const warning_controller_1 = require("../controllers/warning.controller");
+const auth_middleware_1 = require("../middleware/auth.middleware");
+const router = (0, express_1.Router)();
+router.use(auth_middleware_1.authenticate);
+router.get('/', warning_controller_1.getWarnings);
+router.put('/:id/resolve', warning_controller_1.resolveWarning);
+exports.default = router;

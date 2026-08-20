@@ -6,5 +6,7 @@ const router = Router();
 
 // Endpoint ini akan dipanggil oleh NodeMCU / ESP32
 router.post('/readings', verifyDeviceToken, receiveIoTData);
+// router.post('/readings', receiveIoTData);
+
 
 export default router;

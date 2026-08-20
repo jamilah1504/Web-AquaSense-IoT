@@ -39,7 +39,8 @@ const reading_validator_1 = require("../validators/reading.validator");
 // 1. Fungsi untuk menerima data dari IoT (ESP32)
 const receiveIoTData = async (req, res) => {
     try {
-        const result = await readingService.createReading(req.body);
+        const validatedData = reading_validator_1.createReadingSchema.parse(req.body);
+        const result = await readingService.saveSensorReading(validatedData);
         res.status(201).json({
             success: true,
             message: 'Data sensor berhasil disimpan',

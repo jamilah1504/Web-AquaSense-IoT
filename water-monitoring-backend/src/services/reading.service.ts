@@ -1,6 +1,6 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import { analyzeQuality } from './quality.service';
-import { processWarnings } from './warning.service';
+// import { processWarnings } from './warning.service';
 import { getIO } from '../socket/socket.handler';
 
 const prisma = new PrismaClient();
@@ -42,7 +42,7 @@ export const saveSensorReading = async (data: {
   });
 
   // Proses warning (Cek duplikasi & Trigger Notifikasi WhatsApp)
-  const newWarnings = await processWarnings(data.deviceId, reading.id, analysis);
+  // const newWarnings = await processWarnings(data.deviceId, reading.id, analysis);
 
   // Pancarkan (Emit) data terbaru ke Frontend via Socket.IO
   try {
@@ -63,8 +63,8 @@ export const saveSensorReading = async (data: {
     readingId: reading.id,
     timestamp: reading.timestamp,
     deviceId: data.deviceId,
-    analysis,
-    newWarnings 
+    analysis
+    // newWarnings 
   };
 };
 

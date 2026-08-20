@@ -39,6 +39,9 @@ export const addRecipient = async (req: Request, res: Response) => {
 export const updateRecipient = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    if (typeof id !== 'string') {
+      return res.status(400).json({ success: false, message: 'Invalid id parameter' });
+    }
     const validated = updateRecipientSchema.parse(req.body);
     const recipient = await notificationService.updateRecipient(id, validated);
     res.status(200).json({ success: true, message: 'Nomor penerima berhasil diupdate', data: recipient });
@@ -50,6 +53,9 @@ export const updateRecipient = async (req: Request, res: Response) => {
 export const deleteRecipient = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    if (typeof id !== 'string') {
+      return res.status(400).json({ success: false, message: 'Invalid id parameter' });
+    }
     await notificationService.deleteRecipient(id);
     res.status(200).json({ success: true, message: 'Nomor penerima berhasil dihapus' });
   } catch (error: any) {
