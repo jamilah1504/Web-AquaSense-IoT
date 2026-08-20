@@ -11,6 +11,7 @@ import readingRoutes from './routes/reading.routes'; // <-- Import route
 import dashboardRoutes from './routes/dashboard.routes'; // <-- Import route
 import thresholdRoutes from './routes/threshold.routes';
 import warningRoutes from './routes/warning.routes';
+import notificationRoutes from './routes/notification.routes';
 
 const app: Application = express();
 
@@ -39,6 +40,7 @@ app.use('/api/readings', readingRoutes); // <-- Tambahkan route ini
 app.use('/api/dashboard', dashboardRoutes); // <-- Tambahkan route ini
 app.use('/api/thresholds', thresholdRoutes); // <-- Tambahkan route ini
 app.use('/api/warnings', warningRoutes); // <-- Tambahkan route ini
+app.use('/api/notifications', notificationRoutes);
 
 // 3. FALLBACK ROUTE
 app.use((req: Request, res: Response) => {

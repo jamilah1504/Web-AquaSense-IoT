@@ -1,61 +1,89 @@
-import { PrismaClient, Warning } from '@prisma/client';
-import { sendWhatsAppMessage } from './whatsapp.provider';
-import { env } from '../config/env';
+import { PrismaClient } from '@prisma/client';
+import * as fonnteService from './fonnte.service';
 
 const prisma = new PrismaClient();
+export const getNotificationSettings = async () => {
+  let config = await prisma.notificationConfig.findFirst();
 
-export const sendWarningNotification = async (warning: Warning) => {
-  const recipient = env.WHATSAPP_PHONE_NUMBER;
-  
-  // 1. Cek Cooldown (Mencegah Spam Notifikasi)
-  const lastLog = await prisma.notificationLog.findFirst({
-    where: {
-      warningId: warning.id,
-      status: 'SENT'
-    },
-    orderBy: { createdAt: 'desc' }
-  });
-
-  if (lastLog) {
-    const timeDiffMinutes = (new Date().getTime() - lastLog.createdAt.getTime()) / (1000 * 60);
-    if (timeDiffMinutes < env.NOTIFICATION_COOLDOWN_MINUTES) {
-      return; // Batalkan pengiriman jika masih dalam masa cooldown
-    }
+  if (!config) {
+    config = await prisma.notificationConfig.create({
+      data: {
+        isEnabled: true,
+        triggerOnWarning: true,
+        triggerOnCritical: true,
+        triggerOnSensorOffline: false,
+        triggerOnDeviceOffline: true,
+        cooldownMinutes: 15,
+      },
+    });
   }
 
-  // 2. Format Pesan
-  const unit = warning.parameter === 'PH' ? 'pH' 
-             : warning.parameter === 'TURBIDITY' ? 'NTU' 
-             : warning.parameter === 'TDS' ? 'ppm' 
-             : '°C';
-
-  // Format tanggal: DD/MM/YYYY HH:MM
-  const dateObj = new Date();
-  const dateStr = `${dateObj.getDate().toString().padStart(2, '0')}/${(dateObj.getMonth() + 1).toString().padStart(2, '0')}/${dateObj.getFullYear()}`;
-  const timeStr = `${dateObj.getHours().toString().padStart(2, '0')}:${dateObj.getMinutes().toString().padStart(2, '0')}`;
-
-  const message = `⚠️ WARNING KUALITAS AIR\n\nDevice:\n${warning.deviceId}\n\nParameter:\n${warning.parameter}\n\nNilai:\n${warning.value} ${unit}\n\nBatas:\n${warning.threshold} ${unit}\n\nStatus:\n${warning.severity}\n\nWaktu:\n${dateStr} ${timeStr}\n\nMohon segera dilakukan pemeriksaan.`;
-
-  // 3. Simpan Log Awal (PENDING)
-  const log = await prisma.notificationLog.create({
-    data: {
-      warningId: warning.id,
-      channel: 'WHATSAPP',
-      recipient,
-      message,
-      status: 'PENDING'
-    }
+  const recipients = await prisma.notificationRecipient.findMany({
+    orderBy: { createdAt: 'asc' },
   });
 
-  // 4. Kirim Pesan via Provider
-  const isSuccess = await sendWhatsAppMessage(recipient, message);
+  return { ...config, recipients };
+};
 
-  // 5. Update Status Log
-  await prisma.notificationLog.update({
-    where: { id: log.id },
-    data: {
-      status: isSuccess ? 'SENT' : 'FAILED',
-      sentAt: isSuccess ? new Date() : null,
-    }
+export const updateNotificationConfig = async (
+  data: Partial<{
+    isEnabled: boolean;
+    triggerOnWarning: boolean;
+    triggerOnCritical: boolean;
+    triggerOnSensorOffline: boolean;
+    triggerOnDeviceOffline: boolean;
+    cooldownMinutes: number;
+  }>
+) => {
+  const existing = await prisma.notificationConfig.findFirst();
+  if (!existing) return prisma.notificationConfig.create({ data: data as any });
+  return prisma.notificationConfig.update({ where: { id: existing.id }, data });
+};
+
+export const addRecipient = async (data: { name: string; phone: string; role?: string; isActive?: boolean }) =>
+  prisma.notificationRecipient.create({ data });
+
+export const updateRecipient = async (
+  id: string,
+  data: Partial<{ name: string; phone: string; role: string; isActive: boolean }>
+) => prisma.notificationRecipient.update({ where: { id }, data });
+
+export const deleteRecipient = async (id: string) => prisma.notificationRecipient.delete({ where: { id } });
+
+export const sendTestMessage = async (phone: string, message: string) =>
+  fonnteService.sendFonnteMessage(phone, message);
+
+
+export const notifyForWarning = async (warning: {
+  id: string; parameter: string; severity: 'WARNING' | 'CRITICAL'; message: string; deviceId: string;
+}) => {
+  const config = await getNotificationSettings();
+  if (!config.isEnabled) return;
+  if (warning.severity === 'WARNING' && !config.triggerOnWarning) return;
+  if (warning.severity === 'CRITICAL' && !config.triggerOnCritical) return;
+
+  const cooldownSince = new Date(Date.now() - config.cooldownMinutes * 60 * 1000);
+  const recentLog = await prisma.notificationLog.findFirst({
+    where: {
+      createdAt: { gte: cooldownSince },
+      warning: { deviceId: warning.deviceId, parameter: warning.parameter as any },
+    },
+    orderBy: { createdAt: 'desc' },
   });
+  if (recentLog) return;
+
+  const activeRecipients = config.recipients.filter((r: any) => r.isActive);
+
+  for (const recipient of activeRecipients) {
+    const log = await prisma.notificationLog.create({
+      data: { recipient: recipient.phone, message: warning.message, status: 'PENDING', warningId: warning.id },
+    });
+
+    try {
+      await fonnteService.sendFonnteMessage(recipient.phone, warning.message);
+      await prisma.notificationLog.update({ where: { id: log.id }, data: { status: 'SENT', sentAt: new Date() } });
+    } catch (err: any) {
+      await prisma.notificationLog.update({ where: { id: log.id }, data: { status: 'FAILED', errorMessage: err.message } });
+    }
+  }
 };

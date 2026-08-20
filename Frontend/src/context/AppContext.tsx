@@ -30,6 +30,8 @@ import {
   INITIAL_NOTIFICATIONS,
   buildWhatsAppMessageTemplate
 } from '../utils/constants';
+import { api } from '../config/api';
+import { io } from 'socket.io-client';
 
 interface AppContextType {
   // Auth
@@ -163,7 +165,7 @@ function playAlertBeep(level: 'warning' | 'critical') {
   }
 }
 
-export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   // Auth state
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
     const saved = localStorage.getItem('aquasense_user');
@@ -178,6 +180,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const isAuthenticated = !!currentUser;
+  
 
   // Navigation
   const [activeView, setActiveView] = useState<ViewType>('dashboard');
@@ -238,19 +241,65 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   // Alerts & Notifications
-  const [alerts, setAlerts] = useState<AlertRecord[]>(() => {
-    const saved = localStorage.getItem('aquasense_alerts');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return INITIAL_ALERTS;
+    // Alerts & Notifications — sekarang bersumber dari backend, bukan mock/localStorage
+  const [alerts, setAlerts] = useState<AlertRecord[]>([]);
+
+  const mapWarningToAlert = useCallback((w: any): AlertRecord => {
+    const logs = w.notificationLogs || [];
+    const anyFailed = logs.some((l: any) => l.status === 'FAILED');
+    const anySent = logs.some((l: any) => l.status === 'SENT');
+
+    return {
+      id: w.id,
+      timestamp: w.timestamp ?? (new Date(w.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB'),
+      deviceId: w.deviceId,
+      deviceName: w.deviceName ?? w.device?.name ?? w.deviceId,
+      sensorType: (w.parameter || '').toLowerCase(),
+      sensorName: w.sensorName ?? w.parameter,
+      level: (w.level ?? (w.severity === 'CRITICAL' ? 'critical' : 'warning')) as AlertLevel,
+      status: (w.status === 'RESOLVED' ? 'resolved' : (w.status ?? 'active')).toLowerCase(),
+      currentValue: w.currentValue ?? w.value,
+      thresholdLimit: w.thresholdLimit ?? String(w.threshold ?? ''),
+      unit: w.unit ?? '',
+      message: w.message,
+      whatsappStatus: w.whatsappStatus ?? (anyFailed ? 'failed' : anySent ? 'sent' : 'pending'),
+      whatsappSentAt: w.whatsappSentAt ?? (logs[0]?.sentAt ? new Date(logs[0].sentAt).toLocaleTimeString('id-ID') : undefined),
+      resolvedBy: w.resolvedBy,
+      resolvedAt: w.resolvedAt,
+    };
+  }, []);
+
+  const fetchAlerts = useCallback(async () => {
+    try {
+      const response = await api.get('/warnings');
+      if (response.data.success) {
+        setAlerts(response.data.data.map(mapWarningToAlert));
       }
+    } catch (error) {
+      console.error('Gagal memuat data alert:', error);
     }
-    return INITIAL_ALERTS;
-  });
+  }, [mapWarningToAlert]);
+
+  useEffect(() => {
+    if (isAuthenticated) fetchAlerts();
+  }, [isAuthenticated, fetchAlerts]);
   
-  const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
+  // Notifikasi diturunkan dari alerts (single source of truth dari backend),
+  // status "read" disimpan terpisah secara lokal karena backend belum punya tabel read-status.
+  const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(new Set());
+
+  const notifications: NotificationItem[] = useMemo(() => {
+    return alerts.map((a): NotificationItem => ({
+      id: a.id,
+      timestamp: a.timestamp,
+      title: `${a.level === 'critical' ? 'Bahaya Kritis' : 'Peringatan'}: ${a.sensorName}`,
+      message: a.message,
+      level: a.level,
+      isRead: readNotificationIds.has(a.id),
+      type: 'alert',
+      whatsappStatus: a.whatsappStatus,
+    }));
+  }, [alerts, readNotificationIds]);
   const [selectedAlertForDetail, setSelectedAlertForDetail] = useState<AlertRecord | null>(null);
   const [previewWhatsAppAlert, setPreviewWhatsAppAlert] = useState<AlertRecord | null>(null);
 
@@ -290,9 +339,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [isDarkMode]);
 
   // Persist alerts & devices
-  useEffect(() => {
-    localStorage.setItem('aquasense_alerts', JSON.stringify(alerts));
-  }, [alerts]);
+  // useEffect(() => {
+  //   localStorage.setItem('aquasense_alerts', JSON.stringify(alerts));
+  // }, [alerts]);
 
   useEffect(() => {
     localStorage.setItem('aquasense_devices', JSON.stringify(devices));
@@ -326,6 +375,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return next;
     });
   };
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const socket = io('http://localhost:5000');
+
+    socket.on('new-warning', (warning: any) => {
+      const newAlert = mapWarningToAlert(warning);
+      setAlerts(prev => [newAlert, ...prev]);
+
+      addToast({
+        type: newAlert.level === 'critical' ? 'error' : 'warning',
+        title: `${newAlert.level === 'critical' ? '🔴 Critical' : '🟡 Warning'}: ${newAlert.sensorName}`,
+        message: newAlert.message
+      });
+
+      const newNotif: NotificationItem = {
+        id: `NOTIF-${Date.now()}`,
+        timestamp: 'Baru saja',
+        title: `Peringatan Kualitas Air: ${newAlert.sensorName}`,
+        message: newAlert.message,
+        level: newAlert.level,
+        isRead: false,
+        type: 'alert',
+        whatsappStatus: newAlert.whatsappStatus,
+      };
+      setNotifications(prev => [newNotif, ...prev]);
+    });
+
+    return () => { socket.disconnect(); };
+  }, [isAuthenticated, mapWarningToAlert]);
 
   // Update timer ticks for "Last updated Xs ago" and countdown
   useEffect(() => {
@@ -934,25 +1014,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Alert actions
-  const resolveAlert = (alertId: string, notes?: string) => {
-    setAlerts(prev => prev.map(a => {
-      if (a.id === alertId) {
-        return {
-          ...a,
-          status: 'resolved',
-          resolvedAt: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB',
-          resolvedBy: currentUser?.name || 'Petugas',
-          message: notes ? `${a.message} (Catatan Tindakan: ${notes})` : a.message
-        };
-      }
-      return a;
-    }));
-
-    addToast({
-      type: 'success',
-      title: 'Alert Diselesaikan',
-      message: `Peringatan ${alertId} telah ditandai sebagai Selesai / Teratasi.`
-    });
+  const resolveAlert = async (alertId: string, notes?: string) => {
+    try {
+      await api.put(`/warnings/${alertId}/resolve`, { notes });
+      await fetchAlerts();
+      addToast({ type: 'success', title: 'Alert Diselesaikan', message: `Peringatan telah ditandai selesai.` });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Gagal', message: 'Tidak dapat menyelesaikan alert.' });
+    }
   };
 
   const triggerManualAlert = (sensorType: SensorType, value: number, level: AlertLevel, message: string) => {
@@ -989,11 +1058,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Notifications & WhatsApp
   const markNotificationAsRead = (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    setReadNotificationIds(prev => new Set(prev).add(id));
   };
 
   const markAllNotificationsAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    setReadNotificationIds(new Set(alerts.map(a => a.id)));
     addToast({
       type: 'info',
       title: 'Semua Dibaca',
@@ -1002,7 +1071,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteNotification = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
+    // Karena notifications diturunkan dari alerts, "hapus" di sini berarti tandai dibaca & sembunyikan dari unread count.
+    // Untuk hapus permanen, perlu endpoint resolve/delete di backend.
+    setReadNotificationIds(prev => new Set(prev).add(id));
   };
 
   const updateWhatsAppConfig = (cfg: Partial<WhatsAppConfig>) => {
@@ -1165,6 +1236,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const toggleDarkMode = () => {
     setIsDarkMode(prev => !prev);
   };
+
 
   const unreadNotificationsCount = notifications.filter(n => !n.isRead).length;
   const activeAlertsCount = alerts.filter(a => a.status === 'active').length;

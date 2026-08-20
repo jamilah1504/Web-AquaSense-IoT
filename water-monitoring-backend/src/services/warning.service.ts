@@ -1,70 +1,110 @@
-import { PrismaClient, SensorType, Severity } from '@prisma/client';
-import { AnalysisResult } from './quality.service';
-import { sendWarningNotification } from './notification.service';
+import { PrismaClient } from '@prisma/client';
 import { getIO } from '../socket/socket.handler';
 
 const prisma = new PrismaClient();
+import * as notificationService from './notification.service';
+import * as fonnteService from './fonnte.service';
 
-export const processWarnings = async (
-  deviceId: string,
-  readingId: string,
-  analysis: any 
-) => {
-  const parameters: SensorType[] = ['PH', 'TURBIDITY', 'TDS', 'TEMPERATURE'];
-  const generatedWarnings = [];
+type ParamKey = 'PH' | 'TURBIDITY' | 'TDS' | 'TEMPERATURE';
 
-  for (const param of parameters) {
-    const paramKey = param.toLowerCase();
-    const result: AnalysisResult = analysis[paramKey];
+const PARAM_UNITS: Record<ParamKey, string> = {
+  PH: '', TURBIDITY: 'NTU', TDS: 'ppm', TEMPERATURE: '°C',
+};
 
-    // Jika kualitas normal, lewati
-    if (!result || result.status === 'NORMAL') continue;
+interface ReadingInput {
+  id: string; deviceId: string; ph: number; turbidity: number; tds: number; temperature: number;
+}
 
-    // Cek apakah sudah ada warning yang masih aktif untuk parameter & device ini
-    const activeWarning = await prisma.warning.findFirst({
-      where: { deviceId, parameter: param, status: 'ACTIVE' },
+export const evaluateReadingAndNotify = async (reading: ReadingInput) => {
+  const thresholds = await prisma.threshold.findMany();
+  const device = await prisma.device.findUnique({ where: { deviceId: reading.deviceId } });
+
+  const params: { parameter: ParamKey; value: number }[] = [
+    { parameter: 'PH', value: reading.ph },
+    { parameter: 'TURBIDITY', value: reading.turbidity },
+    { parameter: 'TDS', value: reading.tds },
+    { parameter: 'TEMPERATURE', value: reading.temperature },
+  ];
+
+  for (const p of params) {
+    const threshold = thresholds.find((t) => t.parameter === p.parameter);
+    if (!threshold) continue;
+
+    const severity = getSeverity(p.value, threshold);
+    if (!severity) continue; // masih normal, tidak perlu warning
+
+    const limitValue =
+      severity === 'CRITICAL'
+        ? (threshold.criticalMax !== null && p.value > threshold.criticalMax ? threshold.criticalMax : threshold.criticalMin)
+        : (threshold.warningMax !== null && p.value > threshold.warningMax ? threshold.warningMax : threshold.warningMin);
+
+    const warning = await prisma.warning.create({
+      data: {
+        parameter: p.parameter,
+        value: p.value,
+        threshold: limitValue ?? 0,
+        severity,
+        message: buildWarningMessage(p.parameter, p.value, PARAM_UNITS[p.parameter], severity, device?.name ?? reading.deviceId),
+        deviceId: reading.deviceId,
+        readingId: reading.id,
+      },
     });
 
-    // Jika belum ada warning aktif, buat warning baru
-    if (!activeWarning) {
-      const threshold = await prisma.threshold.findUnique({ where: { parameter: param } });
-      let thresholdLimit = 0;
+    try {
+      getIO().emit('new-warning', warning);
+    } catch (err) {
+      console.warn('Socket.IO belum aktif, skip broadcast realtime:', (err as Error).message);
+    }
 
-      if (result.status === 'CRITICAL') {
-        thresholdLimit = (threshold?.criticalMax !== null && result.value >= threshold!.criticalMax!) 
-          ? threshold!.criticalMax! 
-          : (threshold?.criticalMin || 0);
-      } else {
-        thresholdLimit = (threshold?.warningMax !== null && result.value >= threshold!.warningMax!) 
-          ? threshold!.warningMax! 
-          : (threshold?.warningMin || 0);
-      }
+    await notificationService.notifyForWarning(warning);
+  }
+};
 
-      // Buat data warning di database
-      const newWarning = await prisma.warning.create({
-        data: {
-          deviceId,
-          readingId,
-          parameter: param,
-          value: result.value,
-          threshold: thresholdLimit,
-          severity: result.status as Severity,
-          message: `Nilai ${param} mencapai ${result.value}. Melewati batas ${result.status} (${thresholdLimit}).`,
-          status: 'ACTIVE',
-        },
-      });
+const getSeverity = (
+  value: number,
+  t: { warningMin: number | null; warningMax: number | null; criticalMin: number | null; criticalMax: number | null }
+): 'WARNING' | 'CRITICAL' | null => {
+  if ((t.criticalMin !== null && value < t.criticalMin) || (t.criticalMax !== null && value > t.criticalMax)) return 'CRITICAL';
+  if ((t.warningMin !== null && value < t.warningMin) || (t.warningMax !== null && value > t.warningMax)) return 'WARNING';
+  return null;
+};
 
-      generatedWarnings.push(newWarning);
+const buildWarningMessage = (parameter: string, value: number, unit: string, severity: string, deviceName: string) => {
+  const label = severity === 'CRITICAL' ? 'Bahaya Kritis' : 'Peringatan';
+  return `${label}: Parameter ${parameter} pada ${deviceName} terbaca ${value}${unit} di luar batas aman.`;
+};
 
-      // Trigger Notifikasi WhatsApp secara asynchronous di background
-      void sendWarningNotification(newWarning); 
+const dispatchWhatsAppIfNeeded = async (warning: {
+  id: string; parameter: string; severity: 'WARNING' | 'CRITICAL'; message: string; deviceId: string;
+}) => {
+  const config = await notificationService.getNotificationSettings();
+  if (!config.isEnabled) return;
+  if (warning.severity === 'WARNING' && !config.triggerOnWarning) return;
+  if (warning.severity === 'CRITICAL' && !config.triggerOnCritical) return;
 
-      // Pancarkan (Emit) Warning baru ke Frontend via Socket.IO
-      try {
-        getIO().emit('warning:new', newWarning);
-      } catch (err) {}
+  // Cegah spam: skip jika sudah ada notifikasi untuk parameter+device ini dalam masa cooldown
+  const cooldownSince = new Date(Date.now() - config.cooldownMinutes * 60 * 1000);
+  const recentLog = await prisma.notificationLog.findFirst({
+    where: {
+      createdAt: { gte: cooldownSince },
+      warning: { deviceId: warning.deviceId, parameter: warning.parameter as any },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+  if (recentLog) return;
+
+  const activeRecipients = config.recipients.filter((r: any) => r.isActive);
+
+  for (const recipient of activeRecipients) {
+    const log = await prisma.notificationLog.create({
+      data: { recipient: recipient.phone, message: warning.message, status: 'PENDING', warningId: warning.id },
+    });
+
+    try {
+      await fonnteService.sendFonnteMessage(recipient.phone, warning.message);
+      await prisma.notificationLog.update({ where: { id: log.id }, data: { status: 'SENT', sentAt: new Date() } });
+    } catch (err: any) {
+      await prisma.notificationLog.update({ where: { id: log.id }, data: { status: 'FAILED', errorMessage: err.message } });
     }
   }
-
-  return generatedWarnings;
 };

@@ -15,6 +15,13 @@ export const getWarnings = async (req: Request, res: Response) => {
       take: 100 // Ambil 100 data terbaru
     });
 
+    const getAggregatedWaStatus = (logs: { status: string }[]) => {
+      if (logs.length === 0) return 'pending';
+      if (logs.some(l => l.status === 'FAILED')) return 'failed';
+      if (logs.every(l => l.status === 'SENT')) return 'sent';
+      return 'pending';
+    };
+
     // Format agar sesuai dengan struktur UI Frontend Anda
     const formattedWarnings = warnings.map(w => ({
       id: w.id,
@@ -28,7 +35,7 @@ export const getWarnings = async (req: Request, res: Response) => {
       message: w.message,
       status: w.status.toLowerCase(), // 'active' atau 'resolved'
       timestamp: new Date(w.createdAt).toLocaleString('id-ID'),
-      whatsappStatus: w.notificationLogs.length > 0 ? w.notificationLogs[0].status : 'PENDING'
+      whatsappStatus: getAggregatedWaStatus(w.notificationLogs)
     }));
 
     res.status(200).json({

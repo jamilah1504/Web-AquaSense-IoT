@@ -175,3 +175,25 @@ model DeviceLog {
   deviceId  String
   device    Device   @relation(fields: [deviceId], references: [deviceId], onDelete: Cascade)
 }
+
+//for notification
+model NotificationRecipient {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  role      String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model NotificationConfig {
+  id                     String   @id @default(cuid())
+  isEnabled              Boolean  @default(true)
+  triggerOnWarning       Boolean  @default(true)
+  triggerOnCritical      Boolean  @default(true)
+  triggerOnSensorOffline Boolean  @default(false)
+  triggerOnDeviceOffline Boolean  @default(true)
+  cooldownMinutes        Int      @default(15)
+  updatedAt              DateTime @updatedAt
+}
