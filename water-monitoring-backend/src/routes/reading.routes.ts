@@ -7,6 +7,7 @@ import { authorize } from '../middleware/role.middleware';
 const router = Router();
 
 // Endpoint untuk ESP32 (device) - taruh SEBELUM authenticate, biar tidak diblok JWT
+// router.post('/', receiveIoTData);
 router.post('/', verifyDeviceToken, receiveIoTData);
 
 

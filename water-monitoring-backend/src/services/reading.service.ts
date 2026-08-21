@@ -1,7 +1,7 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import { analyzeQuality } from './quality.service';
-// import { processWarnings } from './warning.service';
 import { getIO } from '../socket/socket.handler';
+import { evaluateReadingAndNotify } from '../services/warning.service';
 
 const prisma = new PrismaClient();
 
@@ -26,6 +26,14 @@ export const saveSensorReading = async (data: {
       temperature: data.temperature,
     }
   });
+
+  try {
+    await evaluateReadingAndNotify(reading);
+  } catch (err: any) {
+    console.error('Gagal evaluasi warning/notifikasi:', err.message);
+    // jangan throw, biar reading tetap dianggap sukses tersimpan
+  }
+
 
   // Perbarui status alat menjadi online
   await prisma.device.update({

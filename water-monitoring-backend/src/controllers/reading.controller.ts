@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import * as readingService from '../services/reading.service';
 import { createReadingSchema, getHistoryQuerySchema } from '../validators/reading.validator';
+import { evaluateReadingAndNotify } from '../services/warning.service';
 
 // 1. Fungsi untuk menerima data dari IoT (ESP32)
 export const receiveIoTData = async (req: Request, res: Response) => {
