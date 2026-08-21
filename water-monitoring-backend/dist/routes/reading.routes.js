@@ -5,6 +5,9 @@ const reading_controller_1 = require("../controllers/reading.controller");
 const auth_middleware_1 = require("../middleware/auth.middleware");
 const role_middleware_1 = require("../middleware/role.middleware");
 const router = (0, express_1.Router)();
+// Endpoint untuk ESP32 (device) - taruh SEBELUM authenticate, biar tidak diblok JWT
+// router.post('/', receiveIoTData);
+// router.post('/', verifyDeviceToken, receiveIoTData);
 // Endpoint untuk frontend (dilindungi JWT)
 router.use(auth_middleware_1.authenticate);
 // Admin dan Operator boleh melihat riwayat

@@ -17,7 +17,18 @@ const app: Application = express();
 
 // 1. MIDDLEWARE WAJIB (Harus paling atas!)
 app.use(helmet());
-app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
+// app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || /^http:\/\/(localhost|192\.168\.\d+\.\d+):3000$/.test(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+}));
 
 // 👇 INI YANG PALING PENTING 👇
 app.use(express.json()); // Membaca req.body berformat JSON

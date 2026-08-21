@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../config/api'; // <-- IMPORT AXIOS
 import { socket } from '../../config/socket'; // <-- IMPORT SOCKET
@@ -67,49 +67,78 @@ export const DashboardView: React.FC = () => {
   const [lastTelemetryUpdate, setLastTelemetryUpdate] = useState<Date>(new Date());
   const [autoRefreshCountdown, setAutoRefreshCountdown] = useState(10);
 
-  // A. Ambil Data Dashboard dari Backend saat pertama kali dibuka
-  useEffect(() => {
-    const fetchDashboard = async () => {
-      try {
-        const response = await api.get(`/dashboard?deviceId=${selectedDeviceId}`);
-        setDashboardData(response.data.data);
-        if (response.data.data?.latestReading) {
-          const r = response.data.data.latestReading;
-          setTelemetry({
-            ph: { value: r.ph, status: r.ph < 6.5 || r.ph > 8.5 ? 'warning' : 'normal' },
-            turbidity: { value: r.turbidity, status: r.turbidity > 5 ? 'warning' : 'normal' },
-            tds: { value: r.tds, status: r.tds > 300 ? 'warning' : 'normal' },
-            temperature: { value: r.temperature, status: 'normal' }
-          });
-        }
-      } catch (error) {
-        console.error("Gagal mengambil data dashboard:", error);
-      }
-    };
+  const getReadingStatus = useCallback((sensorType: SensorType, value: number) => {
+    const config = thresholdConfigs[sensorType];
+    if (!config) return 'normal' as SensorStatus;
 
-    fetchDashboard();
-  }, [selectedDeviceId]);
+    if (sensorType === 'ph' || sensorType === 'temperature') {
+      if (value < config.minCritical || value > config.maxCritical) return 'critical' as SensorStatus;
+      if (value < config.minNormal || value > config.maxNormal) return 'warning' as SensorStatus;
+      return 'normal' as SensorStatus;
+    }
+
+    if (value >= config.minCritical) return 'critical' as SensorStatus;
+    if (value >= config.minWarning) return 'warning' as SensorStatus;
+    return 'normal' as SensorStatus;
+  }, [thresholdConfigs]);
+
+  const fetchDashboard = useCallback(async () => {
+    try {
+      const response = await api.get(`/dashboard?deviceId=${selectedDeviceId}`);
+      setDashboardData(response.data.data);
+      if (response.data.data?.latestReading) {
+        const reading = response.data.data.latestReading;
+        setTelemetry({
+          ph: { value: reading.ph, status: getReadingStatus('ph', reading.ph) },
+          turbidity: { value: reading.turbidity, status: getReadingStatus('turbidity', reading.turbidity) },
+          tds: { value: reading.tds, status: getReadingStatus('tds', reading.tds) },
+          temperature: { value: reading.temperature, status: getReadingStatus('temperature', reading.temperature) }
+        });
+      }
+    } catch (error) {
+      console.error("Gagal mengambil data dashboard:", error);
+    }
+  }, [getReadingStatus, selectedDeviceId]);
+
+  // Ambil data awal dan ulangi setiap kali node yang dipilih berubah.
+  useEffect(() => {
+    void fetchDashboard();
+  }, [fetchDashboard]);
 
   // B. Tangkap Real-time Update dari Arduino via Socket.IO
   useEffect(() => {
     socket.connect();
 
     socket.on('sensor:update', (newData) => {
-      const analysis = newData.analysis;
+      const reading = newData.analysis
+        ? {
+            ph: newData.analysis.ph,
+            turbidity: newData.analysis.turbidity,
+            tds: newData.analysis.tds,
+            temperature: newData.analysis.temperature
+          }
+        : {
+            ph: { value: newData.ph, status: getReadingStatus('ph', newData.ph) },
+            turbidity: { value: newData.turbidity, status: getReadingStatus('turbidity', newData.turbidity) },
+            tds: { value: newData.tds, status: getReadingStatus('tds', newData.tds) },
+            temperature: { value: newData.temperature, status: getReadingStatus('temperature', newData.temperature) }
+          };
+
       setTelemetry({
-        ph: { value: analysis.ph.value, status: analysis.ph.status.toLowerCase() },
-        turbidity: { value: analysis.turbidity.value, status: analysis.turbidity.status.toLowerCase() },
-        tds: { value: analysis.tds.value, status: analysis.tds.status.toLowerCase() },
-        temperature: { value: analysis.temperature.value, status: analysis.temperature.status.toLowerCase() }
+        ph: { value: reading.ph.value, status: reading.ph.status.toLowerCase() as SensorStatus },
+        turbidity: { value: reading.turbidity.value, status: reading.turbidity.status.toLowerCase() as SensorStatus },
+        tds: { value: reading.tds.value, status: reading.tds.status.toLowerCase() as SensorStatus },
+        temperature: { value: reading.temperature.value, status: reading.temperature.status.toLowerCase() as SensorStatus }
       });
-      setLastTelemetryUpdate(new Date());
+      setLastTelemetryUpdate(newData.timestamp ? new Date(newData.timestamp) : new Date());
       setPacketsReceived(prev => prev + 1);
+      void fetchDashboard();
     });
 
     return () => {
       socket.off('sensor:update');
     };
-  }, []);
+  }, [fetchDashboard, getReadingStatus]);
 
   const activeDevice = devices.find(d => d.id === selectedDeviceId) || devices[0];
   const overallWaterQuality = dashboardData?.overallWaterQuality || 'normal';

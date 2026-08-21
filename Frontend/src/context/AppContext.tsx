@@ -38,6 +38,14 @@ interface AppContextType {
   currentUser: UserProfile | null;
   isAuthenticated: boolean;
   login: (username: string, password: string, role?: UserRole) => { success: boolean; error?: string };
+  loginWithUser: (user: {
+    id: string;
+    name: string;
+    email: string;
+    role: 'ADMIN' | 'OPERATOR';
+    phone?: string | null;
+    department?: string | null;
+  }) => void;
   logout: () => void;
   updateProfile: (data: Partial<UserProfile>) => void;
   changePassword: (oldPass: string, newPass: string) => { success: boolean; message: string };
@@ -776,6 +784,35 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     return { success: true };
   };
 
+  const loginWithUser = (user: {
+    id: string;
+    name: string;
+    email: string;
+    role: 'ADMIN' | 'OPERATOR';
+    phone?: string | null;
+    department?: string | null;
+  }) => {
+    const authenticatedUser: UserProfile = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      username: user.email,
+      role: user.role === 'ADMIN' ? 'admin' : 'petugas',
+      avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+      phone: user.phone ?? '',
+      department: user.department ?? '',
+      lastLogin: 'Baru saja'
+    };
+
+    setCurrentUser(authenticatedUser);
+    localStorage.setItem('aquasense_user', JSON.stringify(authenticatedUser));
+    addToast({
+      type: 'success',
+      title: 'Login Berhasil',
+      message: `Selamat datang kembali, ${authenticatedUser.name}.`
+    });
+  };
+
   const logout = () => {
     setCurrentUser(null);
     localStorage.removeItem('aquasense_user');
@@ -1248,6 +1285,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
         currentUser,
         isAuthenticated,
         login,
+        loginWithUser,
         logout,
         updateProfile,
         changePassword,

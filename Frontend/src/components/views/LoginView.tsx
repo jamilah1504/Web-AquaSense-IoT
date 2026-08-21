@@ -3,18 +3,16 @@ import { useApp } from '../../context/AppContext'; // <-- 1. Kembalikan useApp
 import { login as backendLogin } from '../../services/auth.service'; // <-- 2. Import service backend kita
 import { 
   Droplets, Lock, User, ShieldCheck, Activity, 
-  AlertCircle, ArrowRight, Eye, EyeOff
+  AlertCircle, ArrowRight, Eye, EyeOff, Moon, Sun
 } from 'lucide-react';
-import { UserRole } from '../../types';
 
 export const LoginView: React.FC = () => {
   // 3. Ambil fungsi login bawaan dari template Anda
-  const { login: contextLogin } = useApp(); 
+  const { loginWithUser, isDarkMode, toggleDarkMode } = useApp();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<UserRole>('admin');
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -33,7 +31,7 @@ export const LoginView: React.FC = () => {
 
       // C. Beritahu AppContext bahwa user sudah berhasil login!
       // Ini akan otomatis memicu transisi ke DashboardView tanpa me-refresh halaman
-      contextLogin(email, password, selectedRole);
+      loginWithUser(data.user);
 
     } catch (error: any) {
       if (error.response && error.response.data) {
@@ -46,26 +44,23 @@ export const LoginView: React.FC = () => {
     }
   };
 
-  const handleQuickFill = (role: UserRole) => {
-    setSelectedRole(role);
-    if (role === 'admin') {
-      setEmail('admin@aquasense.com');
-      setPassword('password123');
-    } else {
-      // 👇 Ubah bagian ini tambahkan angka 1 👇
-      setEmail('operator1@aquasense.com'); 
-      setPassword('password123');
-    }
-    setErrorMessage('');
-  };
-
   return (
-    <div className="flex items-center justify-center min-h-screen p-4 w-full sm:p-6 bg-slate-900 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(6,182,212,0.15),rgba(255,255,255,0))]">
+    <div className="relative flex items-center justify-center min-h-screen p-4 w-full sm:p-6 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(6,182,212,0.15),rgba(255,255,255,0))] transition-colors duration-200">
+      <button
+        type="button"
+        id="login-theme-toggle-btn"
+        onClick={toggleDarkMode}
+        className="absolute top-4 right-4 p-2 rounded-xl text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white hover:bg-slate-200/70 dark:hover:bg-slate-800/70 transition-colors cursor-pointer"
+        aria-label={isDarkMode ? 'Beralih ke mode terang' : 'Beralih ke mode gelap'}
+      >
+        {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
+      </button>
+
       <div className="grid items-center grid-cols-1 gap-8 w-full max-w-5xl lg:grid-cols-12">
         
         {/* Left Side: Product Branding & Features */}
-        <div className="space-y-6 text-center text-white lg:col-span-6 lg:text-left">
-          <div className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-semibold">
+        <div className="space-y-6 text-center text-slate-900 dark:text-white lg:col-span-6 lg:text-left">
+          <div className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-xs font-semibold">
             <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
             <span>Sistem Pemantauan IoT Terintegrasi</span>
           </div>
@@ -79,78 +74,42 @@ export const LoginView: React.FC = () => {
                 AquaSense <span className="text-cyan-400">IoT</span>
               </h1>
             </div>
-            <p className="max-w-md mx-auto text-sm leading-relaxed text-slate-400 sm:text-base lg:mx-0">
+            <p className="max-w-md mx-auto text-sm leading-relaxed text-slate-600 dark:text-slate-400 sm:text-base lg:mx-0">
               Platform telemetri kualitas air modern berbasis IoT. Pantau parameter pH, Turbidity, TDS, dan Suhu secara realtime dengan notifikasi otomatis via WhatsApp.
             </p>
           </div>
 
           {/* Key Capabilities Pills */}
           <div className="grid max-w-md grid-cols-2 gap-3 pt-2 mx-auto text-left lg:mx-0">
-            <div className="p-3 border rounded-xl bg-slate-800/60 border-slate-700/60 backdrop-blur-xs">
-              <div className="flex items-center gap-2 text-xs font-semibold text-cyan-400">
+            <div className="p-3 border rounded-xl bg-white/70 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700/60 backdrop-blur-xs">
+              <div className="flex items-center gap-2 text-xs font-semibold text-cyan-600 dark:text-cyan-400">
                 <Activity className="w-4 h-4" />
                 <span>Realtime Telemetry</span>
               </div>
-              <p className="text-[11px] text-slate-400 mt-1">Update data sensor per detik dengan grafik interaktif.</p>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1">Update data sensor per detik dengan grafik interaktif.</p>
             </div>
 
-            <div className="p-3 border rounded-xl bg-slate-800/60 border-slate-700/60 backdrop-blur-xs">
+            <div className="p-3 border rounded-xl bg-white/70 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700/60 backdrop-blur-xs">
               <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400">
                 <ShieldCheck className="w-4 h-4" />
                 <span>Multi-Tier Alert</span>
               </div>
-              <p className="text-[11px] text-slate-400 mt-1">Peringatan otomatis Normal, Warning, & Critical.</p>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1">Peringatan otomatis Normal, Warning, & Critical.</p>
             </div>
           </div>
         </div>
 
         {/* Right Side: Login Card */}
         <div className="w-full max-w-md mx-auto lg:col-span-6">
-          <div className="p-6 border shadow-2xl bg-[#0E131F]/90 border-slate-800/80 rounded-2xl sm:p-8 backdrop-blur-xl">
+          <div className="p-6 border shadow-2xl bg-white/90 dark:bg-[#0E131F]/90 border-slate-200 dark:border-slate-800/80 rounded-2xl sm:p-8 backdrop-blur-xl">
             
             <div className="mb-6">
-              <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
+              <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
                 Masuk ke Sistem
               </h2>
-              <p className="mt-1 text-xs text-slate-400 sm:text-sm">
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
                 Gunakan kredensial Administrator atau Petugas Lapangan.
               </p>
-            </div>
-
-            {/* Quick Demo Role Selector */}
-            <div className="mb-5">
-              <label className="block mb-2 text-xs font-semibold text-slate-400">
-                Pilih Role Demo (1-Click Autofill):
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  id="login-quick-admin-btn"
-                  onClick={() => handleQuickFill('admin')}
-                  className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                    selectedRole === 'admin'
-                      ? 'bg-cyan-500 text-white border-cyan-400 shadow-xs'
-                      : 'bg-slate-800/80 text-slate-300 border-slate-700/80 hover:bg-slate-700/80'
-                  }`}
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>Admin Utama</span>
-                </button>
-
-                <button
-                  type="button"
-                  id="login-quick-petugas-btn"
-                  onClick={() => handleQuickFill('petugas')}
-                  className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                    selectedRole === 'petugas'
-                      ? 'bg-cyan-500 text-white border-cyan-400 shadow-xs'
-                      : 'bg-slate-800/80 text-slate-300 border-slate-700/80 hover:bg-slate-700/80'
-                  }`}
-                >
-                  <User className="w-4 h-4" />
-                  <span>Petugas Lapangan</span>
-                </button>
-              </div>
             </div>
 
             {/* Error Message banner */}
@@ -164,7 +123,7 @@ export const LoginView: React.FC = () => {
             {/* Login Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Email
                 </label>
                 <div className="relative">
@@ -178,13 +137,13 @@ export const LoginView: React.FC = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="admin@aquasense.com"
-                    className="w-full bg-slate-900/90 border border-slate-700/80 text-white text-sm rounded-xl pl-10 pr-4 py-2.5 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-colors"
+                    className="w-full bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700/80 text-slate-900 dark:text-white text-sm rounded-xl pl-10 pr-4 py-2.5 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-colors"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Kata Sandi (Password)
                 </label>
                 <div className="relative">
@@ -198,7 +157,7 @@ export const LoginView: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Masukkan password"
-                    className="w-full bg-slate-900/90 border border-slate-700/80 text-white text-sm rounded-xl pl-10 pr-10 py-2.5 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-colors"
+                    className="w-full bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700/80 text-slate-900 dark:text-white text-sm rounded-xl pl-10 pr-10 py-2.5 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-colors"
                   />
                   <button
                     type="button"
@@ -211,7 +170,7 @@ export const LoginView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-1 text-xs text-slate-400">
+              <div className="flex items-center justify-between pt-1 text-xs text-slate-500 dark:text-slate-400">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" defaultChecked className="rounded accent-cyan-500" />
                   <span>Ingat saya di perangkat ini</span>
@@ -238,7 +197,7 @@ export const LoginView: React.FC = () => {
               </button>
             </form>
 
-            <div className="pt-4 mt-6 text-xs text-center border-t border-slate-700/60 text-slate-400">
+            <div className="pt-4 mt-6 text-xs text-center border-t border-slate-200 dark:border-slate-700/60 text-slate-500 dark:text-slate-400">
               <span>Status Server IoT: </span>
               <span className="inline-flex items-center gap-1 font-semibold text-emerald-400">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>

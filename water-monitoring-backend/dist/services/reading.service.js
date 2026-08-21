@@ -3,8 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getReadingHistory = exports.saveSensorReading = void 0;
 const client_1 = require("@prisma/client");
 const quality_service_1 = require("./quality.service");
-// import { processWarnings } from './warning.service';
 const socket_handler_1 = require("../socket/socket.handler");
+const warning_service_1 = require("../services/warning.service");
 const prisma = new client_1.PrismaClient();
 // FUNGSI 1: Menyimpan data dari IoT
 const saveSensorReading = async (data) => {
@@ -21,6 +21,13 @@ const saveSensorReading = async (data) => {
             temperature: data.temperature,
         }
     });
+    try {
+        await (0, warning_service_1.evaluateReadingAndNotify)(reading);
+    }
+    catch (err) {
+        console.error('Gagal evaluasi warning/notifikasi:', err.message);
+        // jangan throw, biar reading tetap dianggap sukses tersimpan
+    }
     // Perbarui status alat menjadi online
     await prisma.device.update({
         where: { deviceId: data.deviceId },

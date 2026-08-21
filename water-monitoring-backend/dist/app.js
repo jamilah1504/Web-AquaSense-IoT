@@ -7,7 +7,6 @@ const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
 const morgan_1 = __importDefault(require("morgan"));
-const env_1 = require("./config/env");
 const logger_1 = require("./utils/logger");
 const auth_routes_1 = __importDefault(require("./routes/auth.routes")); // <-- Import route
 const device_routes_1 = __importDefault(require("./routes/device.routes")); // <-- Import route
@@ -20,7 +19,18 @@ const notification_routes_1 = __importDefault(require("./routes/notification.rou
 const app = (0, express_1.default)();
 // 1. MIDDLEWARE WAJIB (Harus paling atas!)
 app.use((0, helmet_1.default)());
-app.use((0, cors_1.default)({ origin: env_1.env.FRONTEND_URL, credentials: true }));
+// app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
+app.use((0, cors_1.default)({
+    origin: (origin, callback) => {
+        if (!origin || /^http:\/\/(localhost|192\.168\.\d+\.\d+):3000$/.test(origin)) {
+            callback(null, true);
+        }
+        else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true,
+}));
 // 👇 INI YANG PALING PENTING 👇
 app.use(express_1.default.json()); // Membaca req.body berformat JSON
 app.use(express_1.default.urlencoded({ extended: true }));
