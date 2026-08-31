@@ -285,7 +285,7 @@ export const NotificationSettingsView: React.FC = () => {
                       Perangkat Offline (Gateway Down)
                     </span>
                     <span className="text-[11px] text-slate-400">
-                      Node IoT kehilangan daya atau koneksi LoRa/WiFi terputus.
+                      Perangkat sensor kehilangan daya atau koneksi WiFi terputus.
                     </span>
                   </div>
                 </div>

@@ -325,83 +325,23 @@ export const STANDARD_PRESETS: Record<string, { label: string; description: stri
 
 export const INITIAL_DEVICES: IoTDevice[] = [
   {
-    id: 'DEV-AQ-001',
-    name: 'Reservoir Utama Gedung A (Main Intake)',
-    location: 'Bak Penampungan Utama - Blok Utara',
-    ipAddress: '192.168.10.45',
-    macAddress: '3C:71:BF:88:9A:12',
-    firmwareVersion: 'v2.4.1-stable',
+    id: 'WATER-001',
+    name: 'Sensor Tandon Utama',
+    location: 'Instalasi utama',
+    ipAddress: '-',
+    macAddress: '-',
+    firmwareVersion: 'v1.0.0',
     status: 'online',
-    batteryLevel: 98,
-    signalStrength: 92,
-    lastSeen: 'Baru saja (1 detik lalu)',
-    installedDate: '12 Januari 2024',
+    batteryLevel: 100,
+    signalStrength: 100,
+    lastSeen: 'Baru saja',
+    installedDate: 'Belum diatur',
     activeSensors: ['ph', 'turbidity', 'tds', 'temperature'],
     sensorsStatus: {
       ph: 'normal',
       turbidity: 'normal',
       tds: 'normal',
       temperature: 'normal'
-    }
-  },
-  {
-    id: 'DEV-AQ-002',
-    name: 'Instalasi Pengolahan Air (IPA Filter 2)',
-    location: 'Stasiun Filtrasi & Klorinasi',
-    ipAddress: '192.168.10.46',
-    macAddress: '3C:71:BF:88:9A:34',
-    firmwareVersion: 'v2.4.0-stable',
-    status: 'online',
-    batteryLevel: 87,
-    signalStrength: 85,
-    lastSeen: '1 menit lalu',
-    installedDate: '15 Februari 2024',
-    activeSensors: ['ph', 'turbidity', 'tds', 'temperature'],
-    sensorsStatus: {
-      ph: 'normal',
-      turbidity: 'warning',
-      tds: 'normal',
-      temperature: 'normal'
-    }
-  },
-  {
-    id: 'DEV-AQ-003',
-    name: 'Pipa Distribusi Zona Selatan',
-    location: 'Jaringan Pipa Distribusi Utama Km 4',
-    ipAddress: '192.168.10.49',
-    macAddress: '3C:71:BF:88:9A:78',
-    firmwareVersion: 'v2.3.9-legacy',
-    status: 'online',
-    batteryLevel: 72,
-    signalStrength: 68,
-    lastSeen: '3 menit lalu',
-    installedDate: '20 Maret 2024',
-    activeSensors: ['ph', 'turbidity', 'tds', 'temperature'],
-    sensorsStatus: {
-      ph: 'normal',
-      turbidity: 'normal',
-      tds: 'normal',
-      temperature: 'normal'
-    }
-  },
-  {
-    id: 'DEV-AQ-004',
-    name: 'Bak Sedimentasi Cadangan (Standby)',
-    location: 'Kolam Pengendapan Sisi Barat',
-    ipAddress: '192.168.10.52',
-    macAddress: '3C:71:BF:88:9A:90',
-    firmwareVersion: 'v2.4.1-stable',
-    status: 'offline',
-    batteryLevel: 14,
-    signalStrength: 0,
-    lastSeen: '2 hari lalu',
-    installedDate: '05 Mei 2024',
-    activeSensors: ['ph', 'turbidity', 'tds', 'temperature'],
-    sensorsStatus: {
-      ph: 'offline',
-      turbidity: 'offline',
-      tds: 'offline',
-      temperature: 'offline'
     }
   }
 ];
@@ -498,8 +438,8 @@ export function generateInitialHistory(count = 35): HistoricalRecord[] {
     records.push({
       id: `HIST-${1000 + i}`,
       timestamp: dateStr,
-      deviceId: 'DEV-AQ-001',
-      deviceName: 'Reservoir Utama Gedung A',
+      deviceId: 'WATER-001',
+      deviceName: 'Sensor Tandon Utama',
       ph: parseFloat(ph.toFixed(2)),
       turbidity: parseFloat(turbidity.toFixed(2)),
       tds: Math.round(tds),
@@ -516,8 +456,8 @@ export const INITIAL_ALERTS: AlertRecord[] = [
   {
     id: 'ALT-2026-089',
     timestamp: '15 Menit lalu (22:33 WIB)',
-    deviceId: 'DEV-AQ-002',
-    deviceName: 'Instalasi Pengolahan Air (IPA Filter 2)',
+    deviceId: 'WATER-001',
+    deviceName: 'Sensor Tandon Utama',
     sensorType: 'turbidity',
     sensorName: 'Kekeruhan (Turbidity)',
     level: 'warning',
@@ -532,8 +472,8 @@ export const INITIAL_ALERTS: AlertRecord[] = [
   {
     id: 'ALT-2026-088',
     timestamp: '2 Jam lalu (20:45 WIB)',
-    deviceId: 'DEV-AQ-001',
-    deviceName: 'Reservoir Utama Gedung A',
+    deviceId: 'WATER-001',
+    deviceName: 'Sensor Tandon Utama',
     sensorType: 'ph',
     sensorName: 'Derajat Keasaman (pH)',
     level: 'critical',
@@ -550,8 +490,8 @@ export const INITIAL_ALERTS: AlertRecord[] = [
   {
     id: 'ALT-2026-087',
     timestamp: 'Kemarin, 14:15 WIB',
-    deviceId: 'DEV-AQ-004',
-    deviceName: 'Bak Sedimentasi Cadangan',
+    deviceId: 'WATER-001',
+    deviceName: 'Sensor Tandon Utama',
     sensorType: 'temperature',
     sensorName: 'Semua Sensor (Device)',
     level: 'critical',
@@ -559,7 +499,7 @@ export const INITIAL_ALERTS: AlertRecord[] = [
     currentValue: 0,
     thresholdLimit: 'Heartbeat Timeout',
     unit: '-',
-    message: 'Perangkat tidak mengirim data selama lebih dari 2 jam. Indikasi baterai habis atau koneksi LoRa/WiFi putus.',
+    message: 'Perangkat tidak mengirim data selama lebih dari 2 jam. Periksa koneksi perangkat sensor.',
     whatsappStatus: 'sent',
     whatsappSentAt: 'Kemarin, 14:16 WIB'
   }
@@ -602,7 +542,7 @@ export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
     id: 'NOTIF-04',
     timestamp: 'Kemarin',
     title: 'Perangkat Offline Terdeteksi',
-    message: 'Device DEV-AQ-004 (Bak Sedimentasi Cadangan) terputus dari jaringan.',
+    message: 'Perangkat Sensor Tandon Utama terputus dari jaringan.',
     level: 'critical',
     isRead: true,
     type: 'device',

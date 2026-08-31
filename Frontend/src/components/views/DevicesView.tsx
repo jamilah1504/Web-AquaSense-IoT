@@ -59,10 +59,10 @@ export const DevicesView: React.FC = () => {
         <div>
           <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
             <Cpu className="w-6 h-6 text-cyan-500" />
-            Device Management & Node IoT
+            Perangkat Sensor
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Kelola unit gateway telemetri, pantau konektivitas LoRa/WiFi, baterai, dan status probe sensor.
+            Pantau konektivitas, baterai, dan status sensor pada satu instalasi alat.
           </p>
         </div>
 
@@ -82,7 +82,7 @@ export const DevicesView: React.FC = () => {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Cari nama perangkat, lokasi, ID node..."
+            placeholder="Cari nama perangkat atau lokasi..."
             className="w-full bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 text-xs sm:text-sm rounded-xl pl-10 pr-4 py-2 outline-none focus:ring-1 focus:ring-cyan-500 text-slate-900 dark:text-white"
           />
         </div>
@@ -135,7 +135,7 @@ export const DevicesView: React.FC = () => {
                 {/* Device Specifications Grid */}
                 <div className="grid grid-cols-2 gap-2.5 my-5 text-xs font-mono">
                   <div className="p-2.5 bg-slate-50/80 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800/60">
-                    <span className="text-[10px] text-slate-400 block font-sans">Node ID</span>
+                    <span className="text-[10px] text-slate-400 block font-sans">ID Perangkat</span>
                     <strong className="text-slate-800 dark:text-slate-200">{device.id}</strong>
                   </div>
                   <div className="p-2.5 bg-slate-50/80 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800/60">
@@ -143,7 +143,7 @@ export const DevicesView: React.FC = () => {
                     <strong className="text-slate-800 dark:text-slate-200">{device.firmwareVersion}</strong>
                   </div>
                   <div className="p-2.5 bg-slate-50/80 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800/60">
-                    <span className="text-[10px] text-slate-400 block font-sans">IP Gateway</span>
+                    <span className="text-[10px] text-slate-400 block font-sans">Alamat IP</span>
                     <strong className="text-slate-800 dark:text-slate-200">{device.ipAddress}</strong>
                   </div>
                   <div className="p-2.5 bg-slate-50/80 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800/60">
@@ -194,7 +194,7 @@ export const DevicesView: React.FC = () => {
                   }}
                   className="px-3.5 py-1.5 bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-950/40 dark:hover:bg-cyan-900/60 text-cyan-700 dark:text-cyan-300 rounded-xl text-xs font-bold transition-colors cursor-pointer border border-cyan-200/80 dark:border-cyan-800/80"
                 >
-                  {isSelected ? '✓ Sedang Dimonitor' : 'Monitor Node Ini'}
+                  {isSelected ? '✓ Sedang Dimonitor' : 'Monitor Perangkat Ini'}
                 </button>
 
                 <div className="flex items-center gap-2">

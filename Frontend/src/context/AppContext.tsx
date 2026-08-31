@@ -179,7 +179,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     const saved = localStorage.getItem('aquasense_user');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        return JSON.parse(saved).slice(0, 1);
       } catch (e) {
         return null;
       }
@@ -193,7 +193,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   // Navigation
   const [activeView, setActiveView] = useState<ViewType>('dashboard');
   const [selectedSensorDetail, setSelectedSensorDetail] = useState<SensorType>('ph');
-  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('DEV-AQ-001');
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('WATER-001');
 
   // UI Theme & Layout
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -227,7 +227,10 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     const saved = localStorage.getItem('aquasense_devices');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const savedDevices = JSON.parse(saved);
+        return savedDevices.some((device: IoTDevice) => device.id === 'WATER-001')
+          ? savedDevices.slice(0, 1)
+          : INITIAL_DEVICES;
       } catch (e) {
         return INITIAL_DEVICES;
       }
@@ -513,23 +516,11 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
 
-      // Base values according to selected node for realism
+      // Base values for the single installed device
       let basePh = 7.24;
       let baseTurb = 2.15;
       let baseTds = 170;
       let baseTemp = 25.4;
-
-      if (selectedDeviceId === 'DEV-AQ-002') {
-        basePh = 6.85;
-        baseTurb = 5.40; // IPA filter slightly more turbid
-        baseTds = 280;
-        baseTemp = 26.8;
-      } else if (selectedDeviceId === 'DEV-AQ-003') {
-        basePh = 7.40;
-        baseTurb = 0.85; // Clean filtered distribution
-        baseTds = 110;
-        baseTemp = 24.9;
-      }
 
       let newPhVal = basePh;
       let newTurbVal = baseTurb;
@@ -990,7 +981,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
     addToast({
       type: 'success',
-      title: 'Node IoT Berhasil Ditambahkan',
+      title: 'Perangkat Sensor Berhasil Ditambahkan',
       message: `${fullDevice.name} (${fullDevice.id}) siap dimonitor.`
     });
   };
@@ -1006,7 +997,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     addToast({
       type: 'info',
       title: 'Perangkat Dihapus',
-      message: `Node ${deviceId} telah dihapus dari jaringan.`
+      message: `Perangkat ${deviceId} telah dihapus dari sistem.`
     });
   };
 

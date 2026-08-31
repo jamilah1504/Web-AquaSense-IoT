@@ -277,27 +277,27 @@ export const DashboardView: React.FC = () => {
         </div>
       </div>
 
-      {/* Dynamic Node Selector Pill Strip */}
-      <div className="flex items-center justify-between gap-3 p-3 bg-white border dark:bg-[#0E131F] rounded-2xl border-slate-200/80 dark:border-slate-800/80 shadow-xs overflow-x-auto">
-        <div className="flex items-center gap-2 px-2 text-xs font-bold shrink-0 text-slate-500 dark:text-slate-400">
+      {/* Selected device strip */}
+      <div className="flex flex-wrap items-center gap-3 p-3 bg-white border dark:bg-[#0E131F] rounded-2xl border-slate-200/80 dark:border-slate-800/80 shadow-xs">
+        <div className="flex items-center gap-2 px-1 text-xs font-bold shrink-0 text-slate-500 dark:text-slate-400">
           <Radio className="w-4 h-4 text-cyan-500" />
-          <span>Pilih Node IoT:</span>
+          <span>Perangkat Sensor:</span>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
           {devices.map(dev => (
             <button
               key={dev.id}
               id={`dash-select-node-${dev.id}`}
               onClick={() => setSelectedDeviceId(dev.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer ${
+              className={`max-w-full px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer ${
                 selectedDeviceId === dev.id
                   ? 'bg-cyan-600 text-white shadow-xs font-bold'
                   : 'bg-slate-100 dark:bg-slate-800/70 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >
               <span className={`w-2 h-2 rounded-full ${dev.status === 'online' ? 'bg-emerald-400' : 'bg-rose-400'}`} />
-              <span>{dev.name}</span>
-              <span className="text-[10px] opacity-75 font-mono">({dev.id})</span>
+              <span className="truncate">{dev.name}</span>
+              <span className="shrink-0 text-[10px] opacity-75 font-mono">({dev.id})</span>
             </button>
           ))}
         </div>
@@ -400,7 +400,7 @@ export const DashboardView: React.FC = () => {
           <div>
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-bold tracking-wider uppercase text-slate-400">
-                Informasi Node IoT
+                Informasi Perangkat Sensor
               </span>
               <span
                 className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${
@@ -428,7 +428,7 @@ export const DashboardView: React.FC = () => {
                 <span className="font-bold text-slate-700 dark:text-slate-300">{activeDevice?.id}</span>
               </div>
               <div className="bg-slate-50/80 dark:bg-slate-800/40 p-2 rounded-xl border border-slate-100 dark:border-slate-800/60">
-                <span className="text-[10px] text-slate-400 block font-sans">IP Gateway:</span>
+                <span className="text-[10px] text-slate-400 block font-sans">Alamat IP:</span>
                 <span className="font-bold text-slate-700 dark:text-slate-300">{activeDevice?.ipAddress}</span>
               </div>
               <div className="flex items-center justify-between bg-slate-50/80 dark:bg-slate-800/40 p-2 rounded-xl border border-slate-100 dark:border-slate-800/60">
